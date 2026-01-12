@@ -78,8 +78,8 @@ sinks:
       strategy: bearer
       token: "${BETTERSTACK_TOKEN}"
     buffer:
-      type: disk
-      max_size: 52428800  # 50MB disk buffer
+      type: memory
+      max_events: 10000
       when_full: drop_newest
     batch:
       max_bytes: 1048576  # 1MB max batch
