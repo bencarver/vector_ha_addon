@@ -1,6 +1,6 @@
 name: "Vector"
 description: "High-performance observability data pipeline for logs, metrics, and traces"
-version: "1.0.7"
+version: "1.0.8"
 slug: "vector"
 url: "https://github.com/bencarver/vector_ha_addon"
 arch:
@@ -18,8 +18,10 @@ schema:
   betterstack_token: str?
 ports:
   8686/tcp: 8686
+  8687/tcp: 8687
 ports_description:
   8686/tcp: "Vector API & Playground"
+  8687/tcp: "Vector Log Ingestion"
 map:
   - config:rw
   - share:rw

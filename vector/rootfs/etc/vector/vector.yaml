@@ -4,7 +4,7 @@
 # Data directory for Vector's disk buffers
 data_dir: /data/vector
 
-# API configuration (controlled by addon options)
+# API configuration
 api:
   enabled: true
   address: "0.0.0.0:8686"
@@ -14,52 +14,48 @@ api:
 # SOURCES - Where Vector collects data from
 # ============================================================================
 sources:
-  # Home Assistant application logs
-  homeassistant_logs:
-    type: file
-    include:
-      - /config/home-assistant.log
-    read_from: end
+  # HTTP endpoint for receiving logs from Home Assistant
+  http_logs:
+    type: http_server
+    address: "0.0.0.0:8687"
+    encoding: json
+    headers:
+      - X-Log-Source
+    strict_path: false
+    path: /logs
 
 # ============================================================================
 # TRANSFORMS - Process and enrich your data
 # ============================================================================
 transforms:
-  # Parse Home Assistant log format
-  parse_ha_logs:
+  # Process incoming logs from Home Assistant
+  process_ha_logs:
     type: remap
     inputs:
-      - homeassistant_logs
+      - http_logs
     source: |
-      # Try to parse the Home Assistant log format
-      parsed = parse_regex(.message, r'^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) (?P<level>\w+) \((?P<source>[^)]+)\) \[(?P<component>[^\]]+)\] (?P<log_message>.*)$') ?? null
-      
-      if parsed != null {
-        .dt = parsed.timestamp
-        .level = downcase(parsed.level) ?? "info"
-        .source = parsed.source
-        .component = parsed.component
-        .message = parsed.log_message
-      } else {
-        .level = "info"
-      }
-      
-      # Add Home Assistant metadata
+      # Set service identifier
       .service = "home-assistant"
-      .host = get_env_var("HOSTNAME") ?? "homeassistant"
-
-  # Enrich with additional context
-  enrich_logs:
-    type: remap
-    inputs:
-      - parse_ha_logs
-    source: |
-      # Map log levels to Betterstack format
+      
+      # Normalize level field
+      .level = downcase(.level) ?? "info"
       .level = if .level == "warning" { "warn" } else { .level }
       
-      # Add file info
-      del(.file)
-      del(.host)
+      # Ensure message exists
+      .message = .message ?? .name ?? "No message"
+      
+      # Add timestamp if not present
+      .dt = .timestamp ?? now()
+      
+      # Extract component from name if present
+      if exists(.name) && !exists(.component) {
+        .component = .name
+      }
+      
+      # Clean up internal fields
+      del(.path)
+      del(.headers)
+      del(.source_type)
 
 # ============================================================================
 # SINKS - Where Vector sends data
@@ -69,7 +65,7 @@ sinks:
   betterstack:
     type: http
     inputs:
-      - enrich_logs
+      - process_ha_logs
     uri: "https://in.logs.betterstack.com"
     method: post
     encoding:
@@ -82,7 +78,7 @@ sinks:
       max_events: 10000
       when_full: drop_newest
     batch:
-      max_bytes: 1048576  # 1MB max batch
+      max_bytes: 1048576
       timeout_secs: 5
     request:
       retry_attempts: 5
@@ -91,10 +87,10 @@ sinks:
     healthcheck:
       enabled: false
 
-  # Console output for local debugging (optional - can be disabled)
+  # Console output for debugging
   console:
     type: console
     inputs:
-      - enrich_logs
+      - process_ha_logs
     encoding:
       codec: json
