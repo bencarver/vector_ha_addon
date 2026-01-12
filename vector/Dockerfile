@@ -2,27 +2,35 @@ ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
 # Install dependencies
-RUN apk add --no-cache curl tar
+RUN apk add --no-cache \
+    curl \
+    tar \
+    ca-certificates
 
-# Install Vector
-ARG VECTOR_VERSION="0.39.0"
-ARG BUILD_ARCH
+# Vector version
+ENV VECTOR_VERSION="0.42.0"
 
-# Set architecture and download Vector
-RUN set -eux; \
+# Build argument for architecture
+ARG BUILD_ARCH=amd64
+
+# Download and install Vector
+RUN set -ex; \
     case "${BUILD_ARCH}" in \
         amd64)   ARCH='x86_64-unknown-linux-musl' ;; \
         aarch64) ARCH='aarch64-unknown-linux-musl' ;; \
         armv7)   ARCH='armv7-unknown-linux-musleabihf' ;; \
-        *)       echo "Unsupported arch: ${BUILD_ARCH}"; exit 1 ;; \
+        i386)    echo "i386 not supported"; exit 1 ;; \
+        *)       echo "Unknown arch: ${BUILD_ARCH}"; exit 1 ;; \
     esac; \
-    echo "Downloading Vector ${VECTOR_VERSION} for ${ARCH}..."; \
-    curl -sSfL "https://github.com/vectordotdev/vector/releases/download/v${VECTOR_VERSION}/vector-${VECTOR_VERSION}-${ARCH}.tar.gz" \
-        -o /tmp/vector.tar.gz; \
-    tar xzf /tmp/vector.tar.gz -C /tmp; \
-    mv /tmp/vector-${ARCH}/bin/vector /usr/local/bin/vector; \
+    DOWNLOAD_URL="https://github.com/vectordotdev/vector/releases/download/v${VECTOR_VERSION}/vector-${VECTOR_VERSION}-${ARCH}.tar.gz"; \
+    echo "Downloading: ${DOWNLOAD_URL}"; \
+    curl -sSfL "${DOWNLOAD_URL}" -o /tmp/vector.tar.gz; \
+    cd /tmp && tar xzf vector.tar.gz; \
+    ls -la /tmp/; \
+    mv "/tmp/vector-${ARCH}/bin/vector" /usr/local/bin/vector; \
     chmod +x /usr/local/bin/vector; \
-    rm -rf /tmp/vector* 
+    /usr/local/bin/vector --version; \
+    rm -rf /tmp/vector*
 
 # Copy root filesystem
 COPY rootfs /
@@ -35,7 +43,7 @@ RUN chmod a+x /run.sh
 RUN mkdir -p /etc/vector /data/vector
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -sf http://localhost:8686/health || exit 1
 
 CMD [ "/run.sh" ]
