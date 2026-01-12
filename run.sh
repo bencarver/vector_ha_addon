@@ -1,0 +1,46 @@
+#!/usr/bin/with-contenv bashio
+set -e
+
+# Read configuration options
+CONFIG_PATH=$(bashio::config 'config_path')
+API_ENABLED=$(bashio::config 'api_enabled')
+API_ADDRESS=$(bashio::config 'api_address')
+LOG_LEVEL=$(bashio::config 'log_level')
+
+# Create default config directory if it doesn't exist
+if [ ! -d "/config/vector" ]; then
+    bashio::log.info "Creating Vector config directory..."
+    mkdir -p /config/vector
+fi
+
+# Copy default config if user config doesn't exist
+if [ ! -f "${CONFIG_PATH}" ]; then
+    bashio::log.info "Creating default Vector configuration..."
+    cp /etc/vector/vector.yaml "${CONFIG_PATH}"
+fi
+
+# Build Vector arguments
+VECTOR_ARGS="--config ${CONFIG_PATH}"
+
+if bashio::var.true "${API_ENABLED}"; then
+    VECTOR_ARGS="${VECTOR_ARGS} --api --api-address ${API_ADDRESS}"
+fi
+
+# Set log level
+export VECTOR_LOG="${LOG_LEVEL}"
+
+bashio::log.info "Starting Vector..."
+bashio::log.info "Config: ${CONFIG_PATH}"
+bashio::log.info "API: ${API_ENABLED} (${API_ADDRESS})"
+bashio::log.info "Log Level: ${LOG_LEVEL}"
+
+# Validate configuration
+bashio::log.info "Validating Vector configuration..."
+if ! /usr/local/bin/vector validate "${CONFIG_PATH}"; then
+    bashio::log.error "Invalid Vector configuration!"
+    exit 1
+fi
+
+# Start Vector
+exec /usr/local/bin/vector ${VECTOR_ARGS}
+

@@ -1,0 +1,14 @@
+configuration:
+  config_path:
+    name: Configuration Path
+    description: Path to your Vector configuration file. The default configuration will be copied here on first run.
+  api_enabled:
+    name: Enable API
+    description: Enable the Vector API and health endpoints. Required for ingress and the GraphQL playground.
+  api_address:
+    name: API Address
+    description: Address and port for the Vector API to listen on. Format is IP:PORT.
+  log_level:
+    name: Log Level
+    description: Verbosity level for Vector logs. Use 'debug' or 'trace' for troubleshooting.
+

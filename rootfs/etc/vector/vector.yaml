@@ -1,0 +1,89 @@
+# Vector Configuration for Home Assistant
+# Documentation: https://vector.dev/docs/
+
+# Data directory for Vector's disk buffers
+data_dir: /data/vector
+
+# API configuration (controlled by addon options)
+api:
+  enabled: true
+  address: "0.0.0.0:8686"
+  playground: true
+
+# Sources - Where Vector collects data from
+sources:
+  # Home Assistant logs via file
+  homeassistant_logs:
+    type: file
+    include:
+      - /config/home-assistant.log
+    read_from: beginning
+    
+  # Docker container logs (if host_network enabled)
+  # docker_logs:
+  #   type: docker_logs
+  
+  # Internal Vector metrics
+  vector_metrics:
+    type: internal_metrics
+
+# Transforms - Process and enrich your data
+transforms:
+  # Parse Home Assistant log format
+  parse_ha_logs:
+    type: remap
+    inputs:
+      - homeassistant_logs
+    source: |
+      # Parse the Home Assistant log format
+      . = parse_regex!(.message, r'^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) (?P<level>\w+) \((?P<source>[^)]+)\) \[(?P<component>[^\]]+)\] (?P<message>.*)$') ?? .
+      .timestamp = parse_timestamp(.timestamp, "%Y-%m-%d %H:%M:%S%.f") ?? now()
+      .level = downcase(.level) ?? "info"
+
+  # Filter errors and warnings only
+  filter_important:
+    type: filter
+    inputs:
+      - parse_ha_logs
+    condition: |
+      includes(["error", "warning", "critical"], .level)
+
+# Sinks - Where Vector sends data
+sinks:
+  # Console output for debugging
+  console:
+    type: console
+    inputs:
+      - parse_ha_logs
+    encoding:
+      codec: json
+    
+  # Example: Send to Loki
+  # loki:
+  #   type: loki
+  #   inputs:
+  #     - parse_ha_logs
+  #   endpoint: http://loki:3100
+  #   labels:
+  #     application: homeassistant
+  #     environment: production
+  #   encoding:
+  #     codec: json
+
+  # Example: Send metrics to Prometheus
+  # prometheus:
+  #   type: prometheus_exporter
+  #   inputs:
+  #     - vector_metrics
+  #   address: "0.0.0.0:9598"
+
+  # Example: Send to InfluxDB
+  # influxdb:
+  #   type: influxdb_logs
+  #   inputs:
+  #     - parse_ha_logs
+  #   endpoint: http://influxdb:8086
+  #   org: homeassistant
+  #   bucket: logs
+  #   token: "${INFLUXDB_TOKEN}"
+
