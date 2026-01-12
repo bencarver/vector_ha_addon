@@ -1,10 +1,11 @@
 #!/usr/bin/with-contenv bashio
 set -e
 
-# Read configuration options
-CONFIG_PATH=$(bashio::config 'config_path')
-API_ENABLED=$(bashio::config 'api_enabled')
-API_ADDRESS=$(bashio::config 'api_address')
+# Configuration
+CONFIG_PATH="/config/vector/vector.yaml"
+DEFAULT_CONFIG="/etc/vector/vector.yaml"
+
+# Read addon options
 LOG_LEVEL=$(bashio::config 'log_level')
 BETTERSTACK_TOKEN=$(bashio::config 'betterstack_token')
 
@@ -22,11 +23,8 @@ fi
 # Copy default config if user config doesn't exist
 if [ ! -f "${CONFIG_PATH}" ]; then
     bashio::log.info "Creating default Vector configuration..."
-    cp /etc/vector/vector.yaml "${CONFIG_PATH}"
+    cp "${DEFAULT_CONFIG}" "${CONFIG_PATH}"
 fi
-
-# Build Vector arguments
-VECTOR_ARGS="--config ${CONFIG_PATH}"
 
 # Set environment variables
 export VECTOR_LOG="${LOG_LEVEL}"
@@ -50,4 +48,4 @@ if ! /usr/local/bin/vector validate "${CONFIG_PATH}"; then
 fi
 
 # Start Vector
-exec /usr/local/bin/vector ${VECTOR_ARGS}
+exec /usr/local/bin/vector --config "${CONFIG_PATH}"
