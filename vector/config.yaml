@@ -1,6 +1,6 @@
 name: "Vector"
 description: "High-performance observability data pipeline for logs, metrics, and traces"
-version: "1.0.9"
+version: "1.0.10"
 slug: "vector"
 url: "https://github.com/bencarver/vector_ha_addon"
 arch:
@@ -13,9 +13,11 @@ init: false
 options:
   log_level: "info"
   betterstack_token: ""
+  betterstack_endpoint: "https://in.logs.betterstack.com"
 schema:
   log_level: list(trace|debug|info|warn|error)
   betterstack_token: str?
+  betterstack_endpoint: str?
 ports:
   8686/tcp: 8686
   8687/tcp: 8687

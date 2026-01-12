@@ -74,7 +74,7 @@ sinks:
     type: http
     inputs:
       - process_ha_logs
-    uri: "https://in.logs.betterstack.com"
+    uri: "${BETTERSTACK_ENDPOINT}"
     method: post
     encoding:
       codec: json

@@ -8,6 +8,7 @@ DEFAULT_CONFIG="/etc/vector/vector.yaml"
 # Read addon options
 LOG_LEVEL=$(bashio::config 'log_level')
 BETTERSTACK_TOKEN=$(bashio::config 'betterstack_token')
+BETTERSTACK_ENDPOINT=$(bashio::config 'betterstack_endpoint')
 
 # Create required directories
 if [ ! -d "/config/vector" ]; then
@@ -29,6 +30,7 @@ fi
 # Set environment variables
 export VECTOR_LOG="${LOG_LEVEL}"
 export BETTERSTACK_TOKEN="${BETTERSTACK_TOKEN}"
+export BETTERSTACK_ENDPOINT="${BETTERSTACK_ENDPOINT}"
 
 bashio::log.info "Starting Vector..."
 bashio::log.info "Config: ${CONFIG_PATH}"

@@ -6,26 +6,84 @@
 
 ## Features
 
-- **Collect** logs from Home Assistant and other sources
+- **Collect** logs from Home Assistant via HTTP endpoint
 - **Transform** data with Vector Remap Language (VRL)
-- **Route** to multiple destinations (Betterstack, Loki, Elasticsearch, etc.)
+- **Route** to Betterstack, Loki, Elasticsearch, and more
 - **Monitor** with built-in metrics and health checks
 - **GraphQL Playground** for exploring your data
 
 ## Quick Start with Betterstack
 
-1. Install the addon
-2. Get your **Source Token** from [Betterstack Dashboard](https://logs.betterstack.com) → Sources
-3. Enter the token in the addon configuration
-4. Start the addon
-5. Your Home Assistant logs will appear in Betterstack!
+### Step 1: Configure Betterstack Source
 
-## Installation
+1. Log in to [Betterstack](https://logs.betterstack.com)
+2. Go to **Sources** → **Connect source**
+3. Choose **HTTP**
+4. Copy the **Source token**
+5. Copy the **Ingestion host** (e.g., `https://s1234567.eu-nbg-2.betterstackdata.com`)
 
-1. Add this repository to your Home Assistant Add-on Store
-2. Install the "Vector" add-on
-3. Configure your Betterstack token (or customize the pipeline)
-4. Start the add-on
+### Step 2: Configure the Addon
+
+1. Go to **Settings** → **Add-ons** → **Vector** → **Configuration**
+2. Set **Betterstack Source Token** to your token
+3. Set **Betterstack Endpoint** to your ingestion host URL
+4. Click **Save** and **Restart**
+
+### Step 3: Set Up Log Forwarding (Home Assistant OS)
+
+Add this to your `configuration.yaml`:
+
+```yaml
+rest_command:
+  send_log_to_vector:
+    url: "http://294bc44e-vector:8687/logs"
+    method: POST
+    content_type: "application/json"
+    payload: '{"message": "{{ message }}", "level": "{{ level }}", "name": "{{ name }}", "timestamp": "{{ timestamp }}"}'
+```
+
+Then create an automation (**Settings** → **Automations** → **Create**):
+
+```yaml
+alias: Forward Notifications to Vector
+trigger:
+  - platform: event
+    event_type: call_service
+    event_data:
+      domain: persistent_notification
+      service: create
+action:
+  - service: rest_command.send_log_to_vector
+    data:
+      message: "{{ trigger.event.data.service_data.message | default('') }}"
+      level: "error"
+      name: "{{ trigger.event.data.service_data.title | default('notification') }}"
+      timestamp: "{{ now().isoformat() }}"
+mode: queued
+```
+
+Optional heartbeat automation (to detect when HA goes offline):
+
+```yaml
+alias: Vector Heartbeat
+trigger:
+  - platform: time_pattern
+    minutes: "/1"
+action:
+  - service: rest_command.send_log_to_vector
+    data:
+      message: "Home Assistant heartbeat"
+      level: "info"
+      name: "heartbeat"
+      timestamp: "{{ now().isoformat() }}"
+mode: single
+```
+
+### Step 4: Test
+
+1. Go to **Developer Tools** → **Actions**
+2. Run `rest_command.send_log_to_vector` with test data
+3. Check Betterstack Live Tail for the log!
 
 ## Configuration
 
@@ -33,43 +91,51 @@
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `config_path` | Path to Vector config file | `/config/vector/vector.yaml` |
-| `api_enabled` | Enable Vector API | `true` |
-| `api_address` | API listen address | `0.0.0.0:8686` |
 | `log_level` | Log verbosity | `info` |
 | `betterstack_token` | Betterstack source token | (empty) |
+| `betterstack_endpoint` | Betterstack ingestion URL | `https://in.logs.betterstack.com` |
 
-## Betterstack Setup
+### Betterstack Endpoint
 
-1. Log in to [Betterstack](https://logs.betterstack.com)
-2. Go to **Sources** → **Connect source**
-3. Choose **HTTP** or **Custom**
-4. Copy the **Source token**
-5. Paste it in the addon's `betterstack_token` configuration
-6. Restart the addon
+**Important:** Betterstack uses regional endpoints. Find your specific endpoint in your Betterstack source settings.
 
-Your logs will now stream to Betterstack with structured fields:
-- `service`: "home-assistant"
-- `level`: Log level (info, warn, error, etc.)
-- `component`: Home Assistant component name
-- `message`: Log message
+Examples:
+- Default: `https://in.logs.betterstack.com`
+- EU region: `https://s1234567.eu-nbg-2.betterstackdata.com`
 
-### Vector Configuration
+## How It Works
 
-Edit `/config/vector/vector.yaml` to customize your pipeline. The default configuration:
+```
+Home Assistant → Automation → HTTP POST → Vector → Betterstack
+                                (port 8687)
+```
 
-- Reads Home Assistant logs from `/config/home-assistant.log`
-- Parses the log format into structured data
-- Outputs to console (for debugging)
+1. HA automation triggers on events (notifications, errors, etc.)
+2. Sends JSON payload to Vector's HTTP endpoint (port 8687)
+3. Vector transforms and enriches the data
+4. Vector forwards to Betterstack (or other sinks)
 
-### Example: Send Logs to Loki
+## API & Playground
+
+The Vector API runs on port 8686:
+
+- **Health endpoint**: `http://<your-ha>:8686/health`
+- **GraphQL API**: `http://<your-ha>:8686/graphql`
+- **Playground**: `http://<your-ha>:8686/playground`
+
+## Advanced Configuration
+
+Edit `/config/vector/vector.yaml` to customize the pipeline.
+
+### Add Additional Sinks
 
 ```yaml
 sinks:
+  # Add Loki
   loki:
     type: loki
     inputs:
-      - parse_ha_logs
+      - process_ha_logs
     endpoint: http://loki:3100
     labels:
       application: homeassistant
@@ -77,141 +143,31 @@ sinks:
       codec: json
 ```
 
-### Example: Send Metrics to Prometheus
-
-```yaml
-sinks:
-  prometheus:
-    type: prometheus_exporter
-    inputs:
-      - vector_metrics
-    address: "0.0.0.0:9598"
-```
-
-### Example: Send to Elasticsearch
-
-```yaml
-sinks:
-  elasticsearch:
-    type: elasticsearch
-    inputs:
-      - parse_ha_logs
-    endpoints:
-      - http://elasticsearch:9200
-    index: homeassistant-%Y-%m-%d
-```
-
-### Example: Forward to Datadog
-
-```yaml
-sinks:
-  datadog:
-    type: datadog_logs
-    inputs:
-      - parse_ha_logs
-    default_api_key: "${DATADOG_API_KEY}"
-    site: datadoghq.com
-```
-
-## Advanced Configuration
-
-### Multiple Sources
-
-You can add additional sources to collect data from various places:
-
-```yaml
-sources:
-  # Syslog input
-  syslog:
-    type: syslog
-    address: "0.0.0.0:514"
-    mode: tcp
-
-  # HTTP endpoint for custom events
-  http_events:
-    type: http_server
-    address: "0.0.0.0:8080"
-    encoding: json
-```
-
-### Custom Transforms
-
-Use Vector Remap Language (VRL) to transform your data:
-
-```yaml
-transforms:
-  enrich_logs:
-    type: remap
-    inputs:
-      - parse_ha_logs
-    source: |
-      # Add custom fields
-      .environment = "production"
-      .hostname = get_hostname!()
-      
-      # Redact sensitive data
-      .message = redact(.message, filters: ["pattern"], redactor: "[REDACTED]")
-```
-
-### Buffering and Batching
-
-Configure disk buffering for reliability:
-
-```yaml
-sinks:
-  loki:
-    type: loki
-    inputs:
-      - parse_ha_logs
-    endpoint: http://loki:3100
-    buffer:
-      type: disk
-      max_size: 104900000  # 100MB
-      when_full: block
-    batch:
-      max_bytes: 1048576   # 1MB
-      timeout_secs: 5
-```
-
-## API & Playground
-
-When enabled, the Vector API provides:
-
-- **Health endpoint**: `http://<your-ha>:8686/health`
-- **GraphQL API**: `http://<your-ha>:8686/graphql`
-- **Playground**: `http://<your-ha>:8686/playground`
-
-The Playground is useful for:
-- Viewing pipeline topology
-- Checking component health
-- Exploring metrics
-- Testing VRL expressions
-
 ## Troubleshooting
 
-### Check Vector Status
+### 401 Unauthorized from Betterstack
 
-Access the add-on logs in Home Assistant to see Vector's output.
+- Verify your token is correct
+- Check you're using the correct regional endpoint
+- Create a new HTTP source in Betterstack
 
-### Validate Configuration
+### Logs not appearing
 
-Vector validates the configuration on startup. Check the logs for any validation errors.
+1. Check Vector addon logs for errors
+2. Test the rest_command manually in Developer Tools
+3. Verify the automation is enabled
 
-### Common Issues
+### Connection refused
 
-1. **Permission denied reading logs**: Ensure the add-on has access to the config folder
-2. **Connection refused to sink**: Verify the endpoint is reachable from the container
-3. **Memory usage high**: Adjust buffer sizes and batch settings
+- Check the addon hostname (usually `294bc44e-vector`)
+- Verify port 8687 is exposed
 
 ### Debug Mode
 
-Set `log_level` to `debug` or `trace` for more verbose output.
+Set `log_level` to `debug` for verbose output.
 
 ## Resources
 
 - [Vector Documentation](https://vector.dev/docs/)
-- [VRL Reference](https://vector.dev/docs/reference/vrl/)
-- [Vector Sources](https://vector.dev/docs/reference/configuration/sources/)
-- [Vector Sinks](https://vector.dev/docs/reference/configuration/sinks/)
+- [Betterstack Docs](https://betterstack.com/docs/logs/)
 - [Issue Tracker](https://github.com/bencarver/vector_ha_addon/issues)
-
