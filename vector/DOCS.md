@@ -8,15 +8,23 @@
 
 - **Collect** logs from Home Assistant and other sources
 - **Transform** data with Vector Remap Language (VRL)
-- **Route** to multiple destinations (Loki, Elasticsearch, InfluxDB, etc.)
+- **Route** to multiple destinations (Betterstack, Loki, Elasticsearch, etc.)
 - **Monitor** with built-in metrics and health checks
 - **GraphQL Playground** for exploring your data
+
+## Quick Start with Betterstack
+
+1. Install the addon
+2. Get your **Source Token** from [Betterstack Dashboard](https://logs.betterstack.com) → Sources
+3. Enter the token in the addon configuration
+4. Start the addon
+5. Your Home Assistant logs will appear in Betterstack!
 
 ## Installation
 
 1. Add this repository to your Home Assistant Add-on Store
 2. Install the "Vector" add-on
-3. Configure your Vector pipeline
+3. Configure your Betterstack token (or customize the pipeline)
 4. Start the add-on
 
 ## Configuration
@@ -29,6 +37,22 @@
 | `api_enabled` | Enable Vector API | `true` |
 | `api_address` | API listen address | `0.0.0.0:8686` |
 | `log_level` | Log verbosity | `info` |
+| `betterstack_token` | Betterstack source token | (empty) |
+
+## Betterstack Setup
+
+1. Log in to [Betterstack](https://logs.betterstack.com)
+2. Go to **Sources** → **Connect source**
+3. Choose **HTTP** or **Custom**
+4. Copy the **Source token**
+5. Paste it in the addon's `betterstack_token` configuration
+6. Restart the addon
+
+Your logs will now stream to Betterstack with structured fields:
+- `service`: "home-assistant"
+- `level`: Log level (info, warn, error, etc.)
+- `component`: Home Assistant component name
+- `message`: Log message
 
 ### Vector Configuration
 

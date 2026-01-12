@@ -6,7 +6,6 @@ CONFIG_PATH=$(bashio::config 'config_path')
 API_ENABLED=$(bashio::config 'api_enabled')
 API_ADDRESS=$(bashio::config 'api_address')
 LOG_LEVEL=$(bashio::config 'log_level')
-BETTERSTACK_TOKEN=$(bashio::config 'betterstack_token')
 
 # Create default config directory if it doesn't exist
 if [ ! -d "/config/vector" ]; then
@@ -27,20 +26,13 @@ if bashio::var.true "${API_ENABLED}"; then
     VECTOR_ARGS="${VECTOR_ARGS} --api --api-address ${API_ADDRESS}"
 fi
 
-# Set environment variables
+# Set log level
 export VECTOR_LOG="${LOG_LEVEL}"
-export BETTERSTACK_TOKEN="${BETTERSTACK_TOKEN}"
 
 bashio::log.info "Starting Vector..."
 bashio::log.info "Config: ${CONFIG_PATH}"
 bashio::log.info "API: ${API_ENABLED} (${API_ADDRESS})"
 bashio::log.info "Log Level: ${LOG_LEVEL}"
-
-if [ -n "${BETTERSTACK_TOKEN}" ] && [ "${BETTERSTACK_TOKEN}" != "null" ]; then
-    bashio::log.info "Betterstack: Enabled"
-else
-    bashio::log.warning "Betterstack: Token not configured - logs will only output to console"
-fi
 
 # Validate configuration
 bashio::log.info "Validating Vector configuration..."
@@ -51,3 +43,4 @@ fi
 
 # Start Vector
 exec /usr/local/bin/vector ${VECTOR_ARGS}
+

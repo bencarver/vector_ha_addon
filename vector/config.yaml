@@ -1,6 +1,6 @@
 name: "Vector"
 description: "High-performance observability data pipeline for logs, metrics, and traces"
-version: "1.0.2"
+version: "1.0.3"
 slug: "vector"
 url: "https://github.com/bencarver/vector_ha_addon"
 arch:
@@ -15,11 +15,13 @@ options:
   api_enabled: true
   api_address: "0.0.0.0:8686"
   log_level: "info"
+  betterstack_token: ""
 schema:
   config_path: str
   api_enabled: bool
   api_address: str
   log_level: list(trace|debug|info|warn|error)
+  betterstack_token: str?
 ports:
   8686/tcp: 8686
 ports_description:
@@ -33,4 +35,3 @@ ingress_port: 8686
 panel_icon: "mdi:vector-polyline"
 panel_title: "Vector"
 host_network: false
-

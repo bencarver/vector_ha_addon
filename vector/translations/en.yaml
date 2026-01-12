@@ -11,4 +11,6 @@ configuration:
   log_level:
     name: Log Level
     description: Verbosity level for Vector logs. Use 'debug' or 'trace' for troubleshooting.
-
+  betterstack_token:
+    name: Betterstack Source Token
+    description: Your Betterstack (Logtail) source token. Get this from Betterstack dashboard under Sources.
