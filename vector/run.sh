@@ -28,17 +28,12 @@ fi
 # Build Vector arguments
 VECTOR_ARGS="--config ${CONFIG_PATH}"
 
-if bashio::var.true "${API_ENABLED}"; then
-    VECTOR_ARGS="${VECTOR_ARGS} --api --api-address ${API_ADDRESS}"
-fi
-
 # Set environment variables
 export VECTOR_LOG="${LOG_LEVEL}"
 export BETTERSTACK_TOKEN="${BETTERSTACK_TOKEN}"
 
 bashio::log.info "Starting Vector..."
 bashio::log.info "Config: ${CONFIG_PATH}"
-bashio::log.info "API: ${API_ENABLED} (${API_ADDRESS})"
 bashio::log.info "Log Level: ${LOG_LEVEL}"
 
 if [ -n "${BETTERSTACK_TOKEN}" ] && [ "${BETTERSTACK_TOKEN}" != "null" ]; then
