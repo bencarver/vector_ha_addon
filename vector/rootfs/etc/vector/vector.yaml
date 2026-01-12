@@ -20,10 +20,6 @@ sources:
     include:
       - /config/home-assistant.log
     read_from: end
-    
-  # Internal Vector metrics
-  vector_metrics:
-    type: internal_metrics
 
 # ============================================================================
 # TRANSFORMS - Process and enrich your data

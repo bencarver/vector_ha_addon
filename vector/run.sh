@@ -8,10 +8,15 @@ API_ADDRESS=$(bashio::config 'api_address')
 LOG_LEVEL=$(bashio::config 'log_level')
 BETTERSTACK_TOKEN=$(bashio::config 'betterstack_token')
 
-# Create default config directory if it doesn't exist
+# Create required directories
 if [ ! -d "/config/vector" ]; then
     bashio::log.info "Creating Vector config directory..."
     mkdir -p /config/vector
+fi
+
+if [ ! -d "/data/vector" ]; then
+    bashio::log.info "Creating Vector data directory..."
+    mkdir -p /data/vector
 fi
 
 # Copy default config if user config doesn't exist
