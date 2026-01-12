@@ -1,6 +1,6 @@
 name: "Vector"
 description: "High-performance observability data pipeline for logs, metrics, and traces"
-version: "1.0.0"
+version: "1.0.1"
 slug: "vector"
 url: "https://github.com/bencarver/vector_ha_addon"
 arch:
