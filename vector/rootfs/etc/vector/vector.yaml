@@ -38,14 +38,22 @@ transforms:
       .service = "home-assistant"
       
       # Normalize level field
-      .level = downcase(.level) ?? "info"
-      .level = if .level == "warning" { "warn" } else { .level }
+      level_str = string(.level) ?? "info"
+      .level = downcase(level_str)
+      if .level == "warning" { .level = "warn" }
       
       # Ensure message exists
-      .message = .message ?? .name ?? "No message"
+      if !exists(.message) || .message == null {
+        .message = string(.name) ?? "No message"
+      }
       
       # Add timestamp if not present
-      .dt = .timestamp ?? now()
+      if !exists(.dt) {
+        .dt = .timestamp
+      }
+      if .dt == null {
+        .dt = to_string(now())
+      }
       
       # Extract component from name if present
       if exists(.name) && !exists(.component) {
